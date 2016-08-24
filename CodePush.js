@@ -475,6 +475,9 @@ function codePushify(options = {}) {
 if (NativeCodePush) {
   CodePush = codePushify;
   Object.assign(CodePush, {
+    verify: async function() {
+      return await NativeCodePush.verify();
+    },
     AcquisitionSdk: Sdk,
     checkForUpdate,
     getConfiguration,

@@ -60,6 +60,7 @@ class CodePushDemoApp extends Component {
   }
 
   sync() {
+    await CodePush.verify();
     CodePush.sync(
       {
         installMode: CodePush.InstallMode.IMMEDIATE,
