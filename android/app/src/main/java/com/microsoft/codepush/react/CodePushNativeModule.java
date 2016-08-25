@@ -4,9 +4,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.provider.Settings;
+import android.util.Base64;
 import android.view.Choreographer;
 
 import com.auth0.jwt.JWTVerifier;
+import com.auth0.jwt.pem.X509CertUtils;
+
+import java.security.KeyFactory;
+import java.security.PublicKey;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.bridge.Arguments;
@@ -27,6 +32,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -176,21 +182,31 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void verify() {
-        String jwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGFpbVZlcnNpb24iOiIxLjAuMCIsImNvbnRlbnRIYXNoIjoiZjBjZDRkMjMzZWE1M2UxZTNmNWQyYmI3ZDE3YWViNDUzZjY3MjQ1NzYyMDg5ZmFhODAxNDgwNDc1NGUzOWNkNyIsImlhdCI6MTQ3MTkxNjY3MX0.V_PxeyYQ-rQ0f0DKzLj_YtqcTm0jekai84ASTARmtW5mcli3ge7pxKG_fz9oe6Oua_Oqi_7MV8viupQ3PbKrrK4mB-vyIu6W1CSZgR4V4yU6lC5U5RbblN9f6rftXeuPUSo3c-MU7Ka8K8SA9SLYqEF_oktdHxtDMlDoW9TQWpk";
-        final String publicKey =  "-----BEGIN PUBLIC KEY-----\n"
-                + "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCXssUrApjU2tifOTcN18tufCIJ\n"
-                + "kPlvBvul+n4VbSUixJ21DZzpVd4mNhKw54dKI6j5TF5xvwAcrCoeJwFR2pKKZJN2\n"
-                + "mbUv6TMatNHCXsTctrJv+zvi0JjPF59DdCwP1CPe4m/c2N4wH+3pMUQvR4bM+q6R\n"
-                + "GXyD4f2846NDHTUrrwIDAQAB\n"
-                + "-----END PUBLIC KEY-----";
+    public void verify(String jwt, Promise promise) {
+        jwt = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJjbGFpbVZlcnNpb24iOiIxLjAuMCIsImNvbnRlbnRIYXNoIjoiZjBjZDRkMjMzZWE1M2UxZTNmNWQyYmI3ZDE3YWViNDUzZjY3MjQ1NzYyMDg5ZmFhODAxNDgwNDc1NGUzOWNkNyIsImlhdCI6MTQ3MTkxNjY3MX0.V_PxeyYQ-rQ0f0DKzLj_YtqcTm0jekai84ASTARmtW5mcli3ge7pxKG_fz9oe6Oua_Oqi_7MV8viupQ3PbKrrK4mB-vyIu6W1CSZgR4V4yU6lC5U5RbblN9f6rftXeuPUSo3c-MU7Ka8K8SA9SLYqEF_oktdHxtDMlDoW9TQWpk";
+        final PublicKey publicKey;
+
+        try {
+            publicKey = X509CertUtils.parse(
+                "-----BEGIN CERTIFICATE-----\n" +
+                "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCXssUrApjU2tifOTcN18tufCIJ\n" +
+                "kPlvBvul+n4VbSUixJ21DZzpVd4mNhKw54dKI6j5TF5xvwAcrCoeJwFR2pKKZJN2\n" +
+                "mbUv6TMatNHCXsTctrJv+zvi0JjPF59DdCwP1CPe4m/c2N4wH+3pMUQvR4bM+q6R\n" +
+                "GXyD4f2846NDHTUrrwIDAQAB\n" +
+                "-----END CERTIFICATE-----"
+            ).getPublicKey();
+        } catch (Exception e) {
+            CodePushUtils.log("Invalid certificate");   // TODO
+            return;
+        }
 
         try {
             final JWTVerifier verifier = new JWTVerifier(publicKey);
             final Map<String, Object> claims = verifier.verify(jwt);
             CodePushUtils.log("Verification succeeded:\n" + claims.toString());
+            promise.resolve(claims);
         } catch (Exception e) {
-            CodePushUtils.log("Verification failed");
+            CodePushUtils.log("Verification failed: " + e.toString());
         }
     }
 
